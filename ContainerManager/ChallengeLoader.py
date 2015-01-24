@@ -1,4 +1,3 @@
-import asyncore
 import ContainerDispatcher
 import socket
 import sys
@@ -7,21 +6,6 @@ __author__ = 'root'
 
 
 
-def loadChallenge(data):
-
-    #get a free container from ContainerDispatcher
-    free = containerDispatcher.getFreeContainer()
-
-    #get challenge details from php
-
-    #load hackademic into container
-
-    #change site root ip to container ip in config.inc.php
-    #change database location in config.inc.php
-    #copy the appropriate session file to container
-    #?change the IPaddress in session file
-
-    return free
 
 def serve(conn):
     data=''
@@ -34,14 +18,19 @@ def serve(conn):
             #   1. requesting a new container
             #   2. signal that challenge is over and container be freed
 
-            if data.endswith(u"\r\n"):
-                #print data
+            if data.endswith(u"\n"):
+                print data
 
                 #get free container from dispatcher
-                container_name = loadChallenge(data)
+                container = containerDispatcher.getFreeContainer()
 
                 #send port to php
-                conn.send(containerDispatcher.portmap[container_name])
+                #print  containerDispatcher.portmap['rootfs']
+                port,forwarder = containerDispatcher.portmap[container.name]
+
+                conn.send(str(port))
+                conn.close()
+                break
 
     except socket.error:
         print 'Connection error'
@@ -51,16 +40,20 @@ def serve(conn):
 
 
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
 
     #start all containers
     containerDispatcher = ContainerDispatcher.ContainerDispatcher()
-    containerDispatcher.startall()
+    containerDispatcher.start()
 
 
-    host = ''
-    port = 51001
+
+    for n,(i,j) in containerDispatcher.portmap.items():
+        print n,i
+
+    host = '127.0.0.1'
+    port = 8081
     connectionSevered=0
 
     try:
@@ -75,8 +68,9 @@ if __name__ == '__main__':
 
     while True:
         conn, address = s.accept()
-        #open in a seperate thread
         serve(conn)
-        
-    asyncore.loop()
+
+        conn.close()
+        #containerDispatcher.shutdown()
+
 
