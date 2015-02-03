@@ -55,7 +55,7 @@ class ContainerDispatcher:
 
             #read free port configurations
             start = configparser.get('port range','start')
-            self.port_start = start
+            self.port_start = int(start)
             #stop = configparser.get('port range','stop')
             #self.free_ports = range(int(start),int(stop))
             #print self.free_ports
@@ -94,7 +94,14 @@ class ContainerDispatcher:
     def createContainer(self):
 
 
-        name=self.containers['running'][-1].name[:-1] + str((int(self.containers['running'][-1].name[-1]) + 1))
+        #self.containers['not running'].sort(key= lambda x:x.name, reverse=True)
+        lists = self.containers['running'] + self.containers['not running']
+        lists.sort(key=lambda x:x.name)
+
+        last_name = lists[-1].name
+        name = last_name[:-1] + str(int(last_name[-1]) + 1)
+
+        #name=self.containers['running'][-1].name[:-1] + str((int(self.containers['running'][-1].name[-1]) + 1))
         print 'creating container - ',name
 
         ram = self.ram_size
@@ -160,7 +167,7 @@ class ContainerDispatcher:
 
         #forward port
         #local host wont do have to set appropriate ip
-        forwarder = Forwarder.forwarder('192.168.40.139',local_port,remote_ip,80)
+        forwarder = Forwarder.forwarder(self.ip_address,local_port,remote_ip,80)
 
         #add to portmap
         self.portmap[container.name]=(local_port,forwarder)
@@ -194,7 +201,9 @@ class ContainerDispatcher:
 
 
         #if a free container is not found then a container which is shutdown will be activated
+        lock.acquire()
         if len(self.containers['not running']) >0:
+            lock.release()
 
             #get a conatiner which is not running
             free = self.containers['not running'].pop(0)
@@ -215,12 +224,21 @@ class ContainerDispatcher:
                 #do it in an new thread
 
                 def makenew():
+                    lock.acquire()
                     new = self.createContainer()
                     new.stopContainer()
                     self.containers['not running'].append(new)
+                    lock.release()
 
-                thread = threading.Thread(target=makenew)
-                thread.start()
+                #thread = threading.Thread(target=makenew)
+                #thread.start()
+                #threadb = threading.Thread(target=makenew)
+                #threadb.start()
+
+                for i in [1,2,3]:
+
+                    thread = threading.Thread(target=makenew)
+                    thread.start()
 
             return free
 
@@ -305,14 +323,22 @@ if __name__ == '__main__':
     dispatcher.start()
     #dispatcher.createContainer()
 
-    print 'free container '+dispatcher.getFreeContainer().name
-    time.sleep(5)
-    print 'free container '+dispatcher.getFreeContainer().name
-    time.sleep(5)
-    print 'free container '+dispatcher.getFreeContainer().name
-    time.sleep(5)
-    print 'free container '+dispatcher.getFreeContainer().name
-    time.sleep(5)
+    #print 'free container '+dispatcher.getFreeContainer().name
+    #time.sleep(5)
+    #print 'free container '+dispatcher.getFreeContainer().name
+    #time.sleep(5)
+    #print 'free container '+dispatcher.getFreeContainer().name
+    #time.sleep(5)
+    #print 'free container '+dispatcher.getFreeContainer().name
+    #time.sleep(5)
+
+    started=[]
+    for i in [1,2,3,4,5,6]:
+        started.append(dispatcher.getFreeContainer())
+        time.sleep(5)
+
+    for i in started:
+        i.stopContainer()
 
 
     print 'final free'
